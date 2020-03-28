@@ -1,3 +1,4 @@
+#Add Fatality, Getting Well and 
 from random import random, randint, choice
 import itertools
 
@@ -18,13 +19,16 @@ PROB_CHILD = 0.2
 PROB_TRAVEL = 3 / 365
 MAX_DAYS_ABROAD = 10
 
+MIN_RECOVER_DAYS = 7
+MAX_RECOVER_DAYS = 15
+
 def spread(population, prob):
     for person in population:
         if person.infected:
             for other in population:
                 r = random()
-                if r < prob:
-                    other.infected = True
+                if r < prob and other.recovered is False:
+                    other.infect()
 
 class Group:
     def __init__(self):
@@ -48,15 +52,25 @@ class Group:
         # print('Population: ' + str(len(self.people)))
         return len([1 for person in self.people if person.infected])
 
+    def count_recovered(self):
+        return len([1 for person in self.people if person.recovered])
+
 class Person:
     def __init__(self, universe):
         self.infected = False
+        self.recovered = False
         self.universe = None
         self.origin_city = self.city = None
         self.traveling = False
         self.max_days_abroad = 0
         r = random()
         self.child = r < PROB_CHILD
+        self.days_sick = 0
+        self.recover_time = 0
+
+    def infect(self):
+        self.infected = True
+        self.recover_time = randint(MIN_RECOVER_DAYS, MAX_RECOVER_DAYS)
 
     def integrate(self):
         if not self.traveling:
@@ -70,16 +84,23 @@ class Person:
                 self.traveling = True
                 self.city = choice(universe.cities)
                 self.city.people.append(self)
-                print('Departing to trip of duration ' + str(self.max_days_abroad))
+                #print('Departing to trip of duration ' + str(self.max_days_abroad))
         else:
             self.days_abroad += 1
             if self.days_abroad >= self.max_days_abroad:
-                print('Returning from trip of duration ' + str(self.max_days_abroad))
+                #print('Returning from trip of duration ' + str(self.max_days_abroad))
                 # Returns from trip
                 self.traveling = False
                 self.city.remove_from_group(self)
                 self.city = self.origin_city
                 self.city.people.append(self)
+
+        if self.infected:
+            self.days_sick += 1
+            if self.days_sick > self.recover_time:
+                self.infected = False
+                self.recovered = True
+
 
 class Universe:
     def __init__(self):
@@ -156,17 +177,21 @@ universe.people[0].infected = True
 # print('People in country: ' + str(len(country.people)))
 # print(country.count_infected())
 
-NUM_DAYS = 60
+NUM_DAYS = 90
 daily_infections = []
+daily_recovered = []
 for t in range(NUM_DAYS):
-    print('Day ' + str(t) + ': ' + str(country.count_infected()))
+    print('Day ' + str(t) + ' | infected: ' + str(country.count_infected())
+        + ' recovered:' + str(country.count_recovered()))
     daily_infections.append(country.count_infected())
+    daily_recovered.append(country.count_recovered())
     universe.integrate()
 
 t = np.arange(0.0, NUM_DAYS, 1)
 
 fig, ax = plt.subplots()
 ax.plot(t, daily_infections)
+ax.plot(t, daily_recovered)
 
 ax.set(xlabel='days', ylabel='infections',
        title='Country infections per day')
