@@ -191,7 +191,7 @@ universe.people[0].infect()
 # print('People in country: ' + str(len(country.people)))
 # print(country.count_infected())
 
-NUM_DAYS = 160
+NUM_DAYS = 60
 daily_infections = []
 daily_recovered = []
 daily_dead = []
