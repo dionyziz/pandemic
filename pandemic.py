@@ -1,5 +1,4 @@
-#Add Fatality, Getting Well and 
-from random import random, randint, choice
+from random import random, randint, choice, sample
 import itertools
 
 import matplotlib
@@ -25,13 +24,19 @@ MAX_RECOVER_DAYS = 15
 PROB_DEATH = 0.02
 
 def spread(population, prob):
-    for person in population:
-        if person.infected:
-            for other in population:
-                r = random()
-                should_infect = r < prob and not other.recovered and not other.dead
-                if should_infect:
-                    other.infect()
+    alive_population = [person for person in population
+                        if not person.dead]
+    vulnerable_population = [person for person in alive_population
+                             if not person.recovered]
+    infected_population = [person for person in vulnerable_population
+                           if person.infected]
+
+    for person in infected_population:
+        count_infections = np.random.binomial(len(vulnerable_population), prob)
+        new_infections = sample(vulnerable_population, count_infections)
+
+        for other in new_infections:
+            other.infect()
 
 class Group:
     def __init__(self):
