@@ -1,3 +1,4 @@
+#Add Fatality, Getting Well and 
 from random import random, randint, choice
 import itertools
 
@@ -18,13 +19,19 @@ PROB_CHILD = 0.2
 PROB_TRAVEL = 3 / 365
 MAX_DAYS_ABROAD = 10
 
+MIN_RECOVER_DAYS = 7
+MAX_RECOVER_DAYS = 15
+
+PROB_DEATH = 0.02
+
 def spread(population, prob):
     for person in population:
         if person.infected:
             for other in population:
                 r = random()
-                if r < prob:
-                    other.infected = True
+                should_infect = r < prob and not other.recovered and not other.dead
+                if should_infect:
+                    other.infect()
 
 class Group:
     def __init__(self):
@@ -48,15 +55,30 @@ class Group:
         # print('Population: ' + str(len(self.people)))
         return len([1 for person in self.people if person.infected])
 
+    def count_recovered(self):
+        return len([1 for person in self.people if person.recovered])
+
+    def count_dead(self):
+        return len([1 for person in self.people if person.dead])
+
 class Person:
     def __init__(self, universe):
         self.infected = False
+        self.recovered = False
         self.universe = None
         self.origin_city = self.city = None
         self.traveling = False
         self.max_days_abroad = 0
         r = random()
         self.child = r < PROB_CHILD
+        self.days_sick = 0
+        self.recover_time = 0
+        self.dead = False
+
+    def infect(self):
+        self.infected = True
+        self.recover_time = randint(MIN_RECOVER_DAYS, MAX_RECOVER_DAYS)
+        self.days_sick = 0
 
     def integrate(self):
         if not self.traveling:
@@ -70,16 +92,29 @@ class Person:
                 self.traveling = True
                 self.city = choice(universe.cities)
                 self.city.people.append(self)
-                print('Departing to trip of duration ' + str(self.max_days_abroad))
+                #print('Departing to trip of duration ' + str(self.max_days_abroad))
         else:
             self.days_abroad += 1
             if self.days_abroad >= self.max_days_abroad:
-                print('Returning from trip of duration ' + str(self.max_days_abroad))
+                #print('Returning from trip of duration ' + str(self.max_days_abroad))
                 # Returns from trip
                 self.traveling = False
                 self.city.remove_from_group(self)
                 self.city = self.origin_city
                 self.city.people.append(self)
+
+        if self.infected:
+            self.days_sick += 1
+            if self.days_sick > self.recover_time:
+                r = random()
+                if r < PROB_DEATH:
+                    self.infected = False
+                    self.dead = True
+                else:
+                    self.infected = False
+                    self.recovered = True
+                    #print('Recovered! ' + str(self.days_sick) + '  ' + str(self.recover_time))
+
 
 class Universe:
     def __init__(self):
@@ -150,7 +185,7 @@ for i in range(NUM_CITIES):
 country.from_groups(universe.cities)
 
 # Patient 0
-universe.people[0].infected = True
+universe.people[0].infect()
 # print('People in city: ' + str(len(country.child_groups[0].people)))
 # print(country.child_groups[0].count_infected())
 # print('People in country: ' + str(len(country.people)))
@@ -158,18 +193,26 @@ universe.people[0].infected = True
 
 NUM_DAYS = 60
 daily_infections = []
+daily_recovered = []
+daily_dead = []
 for t in range(NUM_DAYS):
-    print('Day ' + str(t) + ': ' + str(country.count_infected()))
+    print('Day ' + str(t) + ' | infected: ' + str(country.count_infected())
+            + ' recovered:' + str(country.count_recovered()) + ' dead:' + str(country.count_dead()))
     daily_infections.append(country.count_infected())
+    daily_recovered.append(country.count_recovered())
+    daily_dead.append(country.count_dead())
     universe.integrate()
 
 t = np.arange(0.0, NUM_DAYS, 1)
 
 fig, ax = plt.subplots()
-ax.plot(t, daily_infections)
+ax.plot(t, daily_infections, label='infected')
+ax.plot(t, daily_recovered, label='recovered')
+ax.plot(t, daily_dead, label='dead')
 
-ax.set(xlabel='days', ylabel='infections',
-       title='Country infections per day')
+ax.set(xlabel='days', ylabel='people',
+       title='Virus analytics per day')
 ax.grid()
+plt.legend()
 
 plt.show()
