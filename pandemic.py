@@ -29,7 +29,7 @@ def spread(population, prob):
         if person.infected:
             for other in population:
                 r = random()
-                should_infect = r < prob and other.recovered is False and other.dead is False
+                should_infect = r < prob and not other.recovered and not other.dead
                 if should_infect:
                     other.infect()
 
