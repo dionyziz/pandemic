@@ -1,4 +1,3 @@
-#Add Fatality, Getting Well and 
 from random import random, randint, choice
 import itertools
 
